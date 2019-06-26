@@ -1,0 +1,7 @@
+{
+  "appId": "com.ionic.project1.agzertuche",
+  "appName": "ionic-project1",
+  "bundledWebRuntime": false,
+  "npmClient": "npm",
+  "webDir": "www"
+}
