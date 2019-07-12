@@ -13,6 +13,8 @@ export class PlacesService {
         'Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod.',
       imageUrl: 'http://lorempixel.com/640/480/city',
       price: 895.41,
+      availableFrom: new Date('2019-05-07'),
+      availableTo: new Date('2019-09-30'),
     },
     {
       id: 'p2',
@@ -20,6 +22,8 @@ export class PlacesService {
       description: 'A unde ducimus quidem assumenda quod.',
       imageUrl: 'http://lorempixel.com/640/480/city',
       price: 5.41,
+      availableFrom: new Date('2019-05-07'),
+      availableTo: new Date('2019-09-30'),
     },
     {
       id: 'p3',
@@ -28,6 +32,8 @@ export class PlacesService {
         'Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod. Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod. Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod.',
       imageUrl: 'http://lorempixel.com/640/480/city',
       price: 95.41,
+      availableFrom: new Date('2019-05-07'),
+      availableTo: new Date('2019-09-30'),
     },
   ];
 
