@@ -6,4 +6,5 @@ export interface Place {
   price: number;
   availableFrom?: Date;
   availableTo?: Date;
+  userId: string;
 }

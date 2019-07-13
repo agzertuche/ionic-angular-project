@@ -1,21 +1,28 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
   NavController,
   ModalController,
   ActionSheetController,
+  LoadingController,
 } from '@ionic/angular';
 import { CreateBookingComponent } from '../../../bookings/create-booking/create-booking.component';
 import { PlacesService } from '../../services/places.service';
 import { Place } from '../../services/place.model';
+import { Subscription } from 'rxjs';
+import { BookingService } from 'src/app/bookings/services/booking.service';
+import { Booking } from 'src/app/bookings/services/booking.model';
+import { AuthService } from 'src/app/auth/services/auth.service';
 
 @Component({
   selector: 'app-place-detail',
   templateUrl: './place-detail.page.html',
   styleUrls: ['./place-detail.page.scss'],
 })
-export class PlaceDetailPage implements OnInit {
+export class PlaceDetailPage implements OnInit, OnDestroy {
   place: Place;
+  private PlaceSub: Subscription;
+  isBookable: boolean;
 
   constructor(
     private route: ActivatedRoute,
@@ -23,6 +30,9 @@ export class PlaceDetailPage implements OnInit {
     private modalCtrl: ModalController,
     private placesService: PlacesService,
     private actionSheetCtrl: ActionSheetController,
+    private bookingService: BookingService,
+    private loadingCtrl: LoadingController,
+    private authService: AuthService,
   ) {}
 
   ngOnInit() {
@@ -31,8 +41,19 @@ export class PlaceDetailPage implements OnInit {
         this.navCtrl.navigateBack('/places/tabs/discover');
         return;
       }
-      this.place = this.placesService.getPlace(paramMap.get('placeId'));
+      this.PlaceSub = this.placesService
+        .getPlace(paramMap.get('placeId'))
+        .subscribe(place => {
+          this.place = place;
+          this.isBookable = place.userId !== this.authService.getUserId;
+        });
     });
+  }
+
+  ngOnDestroy() {
+    if (this.PlaceSub) {
+      this.PlaceSub.unsubscribe();
+    }
   }
 
   onBookPlace() {
@@ -79,9 +100,30 @@ export class PlaceDetailPage implements OnInit {
         return modalElement.onDidDismiss();
       })
       .then(resultData => {
-        console.log(resultData.data, resultData.role);
         if (resultData.role === 'confirm') {
-          console.log('BOOKED!');
+          this.loadingCtrl
+            .create({
+              message: 'Booking place...',
+            })
+            .then(loadingElem => {
+              loadingElem.present();
+              const { id, title, imageUrl } = this.place;
+              const newBooking: Booking = {
+                id: undefined,
+                placeId: id,
+                userId: undefined,
+                placeTitle: title,
+                placeImage: imageUrl,
+                firstName: resultData.data.bookingData.firstName,
+                lastName: resultData.data.bookingData.lastName,
+                guestNumber: resultData.data.bookingData.guestNumber,
+                bookedFrom: resultData.data.bookingData.startDate,
+                bookedTo: resultData.data.bookingData.endDate,
+              };
+              this.bookingService.addBooking(newBooking).subscribe(() => {
+                loadingElem.dismiss();
+              });
+            });
         }
       });
   }
