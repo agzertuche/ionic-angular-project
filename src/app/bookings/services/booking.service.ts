@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Booking } from './booking.model';
 import { BehaviorSubject } from 'rxjs';
 import { AuthService } from 'src/app/auth/services/auth.service';
-import { take, delay, tap, switchMap, map } from 'rxjs/operators';
+import { take, tap, switchMap, map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable({
