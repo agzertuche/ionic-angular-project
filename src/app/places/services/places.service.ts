@@ -5,50 +5,15 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { take, map, tap, delay, switchMap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 
-// [
-//   {
-//     id: 'p1',
-//     title: 'International Integration Coordinator',
-//     description:
-//       'Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod.',
-//     imageUrl: 'http://lorempixel.com/640/480/city',
-//     price: 895.41,
-//     availableFrom: new Date('2019-05-07'),
-//     availableTo: new Date('2019-09-30'),
-//     userId: 'asc',
-//   },
-//   {
-//     id: 'p2',
-//     title: 'Dynamic Optimization Agent',
-//     description: 'A unde ducimus quidem assumenda quod.',
-//     imageUrl: 'http://lorempixel.com/640/480/city',
-//     price: 5.41,
-//     availableFrom: new Date('2019-05-07'),
-//     availableTo: new Date('2019-09-30'),
-//     userId: 'asc',
-//   },
-//   {
-//     id: 'p3',
-//     title: 'Lead Integration Engineer',
-//     description:
-//       'Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod. Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod. Unde sed nemo. Odio libero ab. A unde ducimus quidem assumenda quod.',
-//     imageUrl: 'http://lorempixel.com/640/480/city',
-//     price: 95.41,
-//     availableFrom: new Date('2019-05-07'),
-//     availableTo: new Date('2019-09-30'),
-//     userId: 'asc',
-//   },
-// ];
-
 @Injectable({
   providedIn: 'root',
 })
 export class PlacesService {
+  private places = new BehaviorSubject<Place[]>([]);
   private getApiUrl = (path?) =>
     `https://ionic-project1-dab73.firebaseio.com/offered-places${
       path ? path : '.json'
     }`;
-  private places = new BehaviorSubject<Place[]>([]);
 
   get getPlaces() {
     return this.places.asObservable();
@@ -97,11 +62,20 @@ export class PlacesService {
     );
   }
 
+  uploadImage(image: File) {
+    const uploadData = new FormData();
+    uploadData.append('image', image);
+
+    return this.httpClient.post<{ imageUrl: string; imagePath: string }>(
+      'https://us-central1-ionic-project1-dab73.cloudfunctions.net/storeImage',
+      uploadData,
+    );
+  }
+
   addPlace(place: Place) {
     const newPlace = {
       ...place,
       userId: this.authService.getUserId,
-      imageUrl: 'http://lorempixel.com/640/480/city',
     };
 
     let firebaseId;
