@@ -15,6 +15,7 @@ import { BookingService } from 'src/app/bookings/services/booking.service';
 import { Booking } from 'src/app/bookings/services/booking.model';
 import { AuthService } from 'src/app/auth/services/auth.service';
 import { MapModalComponent } from 'src/app/shared/map-modal/map-modal/map-modal.component';
+import { switchMap, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-place-detail',
@@ -47,12 +48,23 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
         return;
       }
       this.isLoading = true;
-      this.PlaceSub = this.placesService
-        .getPlace(paramMap.get('placeId'))
+      let fetchedUserId: string;
+      this.authService.getUserId
+        .pipe(
+          take(1),
+          switchMap(userId => {
+            if (!userId) {
+              throw new Error('Found no user!');
+            }
+
+            fetchedUserId = userId;
+            return this.placesService.getPlace(paramMap.get('placeId'));
+          }),
+        )
         .subscribe(
           place => {
             this.place = place;
-            this.isBookable = place.userId !== this.authService.getUserId;
+            this.isBookable = place.userId !== fetchedUserId;
             this.isLoading = false;
           },
           error => {
@@ -82,13 +94,9 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
   }
 
   onBookPlace() {
-    console.log('onbookplace');
-    // this.router.navigateByUrl('/places/tabs/discover');
-    // this.navCtrl.navigateBack('/places/tabs/discover');
-    // this.navCtrl.pop();
-
     this.actionSheetCtrl
       .create({
+        cssClass: 'custom-sheet',
         header: 'Choose an Action',
         buttons: [
           {

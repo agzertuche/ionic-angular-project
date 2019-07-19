@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const uuid = require('uuid/v4');
+const fbAdmin = require('firebase-admin');
 
 const { Storage } = require('@google-cloud/storage');
 
@@ -12,11 +13,25 @@ const storage = new Storage({
   projectId: 'ionic-project1-dab73',
 });
 
+fbAdmin.initializeApp({
+  credential: fbAdmin.credential.cert(require('./ionic-project1.json')),
+});
+
 exports.storeImage = functions.https.onRequest((req, res) => {
   return cors(req, res, () => {
     if (req.method !== 'POST') {
       return res.status(500).json({ message: 'Not allowed.' });
     }
+
+    if (
+      !req.headers.authorization ||
+      !req.headers.authorization.startsWith('Bearer ')
+    ) {
+      return res.status(401).json({ error: 'Unauthorized!' });
+    }
+
+    const idToken = req.headers.authorization.split('Bearer ')[1];
+
     const busboy = new Busboy({ headers: req.headers });
     let uploadData;
     let oldImagePath;
@@ -38,18 +53,23 @@ exports.storeImage = functions.https.onRequest((req, res) => {
         imagePath = oldImagePath;
       }
 
-      console.log(uploadData.type);
-      return storage
-        .bucket('ionic-project1-dab73.appspot.com')
-        .upload(uploadData.filePath, {
-          uploadType: 'media',
-          destination: imagePath,
-          metadata: {
-            metadata: {
-              contentType: uploadData.type,
-              firebaseStorageDownloadTokens: id,
-            },
-          },
+      return fbAdmin
+        .auth()
+        .verifyIdToken(idToken)
+        .then(decodedToken => {
+          console.log(uploadData.type);
+          return storage
+            .bucket('ionic-project1-dab73.appspot.com')
+            .upload(uploadData.filePath, {
+              uploadType: 'media',
+              destination: imagePath,
+              metadata: {
+                metadata: {
+                  contentType: uploadData.type,
+                  firebaseStorageDownloadTokens: id,
+                },
+              },
+            });
         })
 
         .then(() => {

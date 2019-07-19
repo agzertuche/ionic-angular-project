@@ -35,13 +35,9 @@
       </ion-row>
       <ion-row>
         <ion-col size-md="6" offset-md="3">
-          <ion-button
-            type="submit"
-            color="primary"
-            (click)="onLogin()"
-            expand="block"
-            >Login</ion-button
-          >
+          <ion-button type="submit" color="primary" expand="block">{{
+            isLogin ? 'Login' : 'Signup'
+          }}</ion-button>
           <ion-button
             type="button"
             color="primary"

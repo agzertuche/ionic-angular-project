@@ -39,6 +39,7 @@ export class LocationPickerComponent implements OnInit {
   onPickLocation() {
     this.actionSheetCtrl
       .create({
+        cssClass: 'custom-sheet',
         header: 'Please Choose',
         buttons: [
           {

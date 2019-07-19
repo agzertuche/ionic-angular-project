@@ -5,6 +5,7 @@ import { SegmentChangeEventDetail } from '@ionic/core';
 import { Subscription } from 'rxjs';
 import { MenuController } from '@ionic/angular';
 import { AuthService } from 'src/app/auth/services/auth.service';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-discover',
@@ -28,15 +29,8 @@ export class DiscoverPage implements OnInit, OnDestroy {
   ngOnInit() {
     this.placesSub = this.placesService.getPlaces.subscribe(places => {
       this.loadedPlaces = places;
-      if (this.chosenFilter === 'all') {
-        this.relevantPlaces = this.loadedPlaces;
-        this.listedLoadedPlaces = this.relevantPlaces.slice(1);
-      } else {
-        this.relevantPlaces = this.loadedPlaces.filter(
-          place => place.userId !== this.authService.getUserId,
-        );
-        this.listedLoadedPlaces = this.relevantPlaces.slice(1);
-      }
+      this.relevantPlaces = this.loadedPlaces;
+      this.listedLoadedPlaces = this.relevantPlaces.slice(1);
     });
   }
 
@@ -56,15 +50,17 @@ export class DiscoverPage implements OnInit, OnDestroy {
   }
 
   onFilterUpdate(event: CustomEvent<SegmentChangeEventDetail>) {
-    if (event.detail.value === 'all') {
-      this.relevantPlaces = this.loadedPlaces;
-      this.listedLoadedPlaces = this.relevantPlaces.slice(1);
-      this.chosenFilter = 'all';
-    } else {
-      this.relevantPlaces = this.loadedPlaces.filter(
-        place => place.userId !== this.authService.getUserId,
-      );
-      this.chosenFilter = 'bookable';
-    }
+    this.authService.getUserId.pipe(take(1)).subscribe(userId => {
+      if (event.detail.value === 'all') {
+        this.relevantPlaces = this.loadedPlaces;
+        this.listedLoadedPlaces = this.relevantPlaces.slice(1);
+        this.chosenFilter = 'all';
+      } else {
+        this.relevantPlaces = this.loadedPlaces.filter(
+          place => place.userId !== userId,
+        );
+        this.chosenFilter = 'bookable';
+      }
+    });
   }
 }

@@ -26,28 +26,53 @@ export class BookingService {
 
   addBooking(booking: Booking) {
     let generatedId;
-    const newBooking: Booking = {
-      ...booking,
-      userId: this.authService.getUserId,
-    };
+    let newBooking: Booking;
+    let fetchedUserId: string;
+    return this.authService.getUserId.pipe(
+      take(1),
+      switchMap(userId => {
+        if (!userId) {
+          throw new Error('No user id found!');
+        }
 
-    return this.httpClient
-      .post<{ name: string }>(this.getApiUrl(), { ...newBooking, id: null })
-      .pipe(
-        switchMap(response => {
-          generatedId = response.name;
-          return this.bookings;
-        }),
-        take(1),
-        tap(bookings => {
-          newBooking.id = generatedId;
-          this.bookings.next(bookings.concat(newBooking));
-        }),
-      );
+        fetchedUserId = userId;
+        return this.authService.getToken;
+      }),
+      take(1),
+      switchMap(token => {
+        newBooking = {
+          ...booking,
+          userId: fetchedUserId,
+        };
+
+        return this.httpClient.post<{ name: string }>(
+          `${this.getApiUrl()}?auth=${token}`,
+          {
+            ...newBooking,
+            id: null,
+          },
+        );
+      }),
+      switchMap(response => {
+        generatedId = response.name;
+        return this.bookings;
+      }),
+      take(1),
+      tap(bookings => {
+        newBooking.id = generatedId;
+        this.bookings.next(bookings.concat(newBooking));
+      }),
+    );
   }
 
   cancelBooking(bookingId: string) {
-    return this.httpClient.delete(this.getApiUrl(`/${bookingId}.json`)).pipe(
+    return this.authService.getToken.pipe(
+      take(1),
+      switchMap(token => {
+        return this.httpClient.delete(
+          this.getApiUrl(`/${bookingId}.json?auth=${token}`),
+        );
+      }),
       switchMap(() => {
         return this.bookings;
       }),
@@ -61,31 +86,41 @@ export class BookingService {
   }
 
   fetchBookings() {
-    return this.httpClient
-      .get<{ [key: string]: Booking }>(
-        `${this.getApiUrl()}?orderBy="userId"&equalTo="${
-          this.authService.getUserId
-        }"`,
-      )
-      .pipe(
-        map(response => {
-          const bookings: Booking[] = [];
-          for (const key in response) {
-            if (response.hasOwnProperty(key)) {
-              const element = response[key];
-              bookings.push({
-                ...element,
-                id: key,
-                bookedFrom: new Date(element.bookedFrom),
-                bookedTo: new Date(element.bookedTo),
-              });
-            }
+    let fetchedUserId: string;
+
+    return this.authService.getUserId.pipe(
+      take(1),
+      switchMap(userId => {
+        if (!userId) {
+          throw new Error('User not found!');
+        }
+        fetchedUserId = userId;
+        return this.authService.getToken;
+      }),
+      take(1),
+      switchMap(token => {
+        return this.httpClient.get<{ [key: string]: Booking }>(
+          `${this.getApiUrl()}?orderBy="userId"&equalTo="${fetchedUserId}"&auth=${token}`,
+        );
+      }),
+      map(response => {
+        const bookings: Booking[] = [];
+        for (const key in response) {
+          if (response.hasOwnProperty(key)) {
+            const element = response[key];
+            bookings.push({
+              ...element,
+              id: key,
+              bookedFrom: new Date(element.bookedFrom),
+              bookedTo: new Date(element.bookedTo),
+            });
           }
-          return bookings;
-        }),
-        tap(bookings => {
-          this.bookings.next(bookings);
-        }),
-      );
+        }
+        return bookings;
+      }),
+      tap(bookings => {
+        this.bookings.next(bookings);
+      }),
+    );
   }
 }

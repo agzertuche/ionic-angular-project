@@ -25,7 +25,13 @@ export class PlacesService {
   ) {}
 
   fetchPlaces() {
-    return this.httpClient.get<{ [key: string]: Place }>(this.getApiUrl()).pipe(
+    return this.authService.getToken.pipe(
+      take(1),
+      switchMap(token => {
+        return this.httpClient.get<{ [key: string]: Place }>(
+          `${this.getApiUrl()}?auth=${token}`,
+        );
+      }),
       map(response => {
         const places: Place[] = [];
         for (const key in response) {
@@ -48,7 +54,11 @@ export class PlacesService {
   }
 
   getPlace(id: string) {
-    return this.httpClient.get(this.getApiUrl(`/${id}.json`)).pipe(
+    return this.authService.getToken.pipe(
+      take(1),
+      switchMap(token => {
+        return this.httpClient.get(this.getApiUrl(`/${id}.json?auth=${token}`));
+      }),
       map(
         (place: Place): Place => {
           return {
@@ -66,37 +76,67 @@ export class PlacesService {
     const uploadData = new FormData();
     uploadData.append('image', image);
 
-    return this.httpClient.post<{ imageUrl: string; imagePath: string }>(
-      'https://us-central1-ionic-project1-dab73.cloudfunctions.net/storeImage',
-      uploadData,
+    return this.authService.getToken.pipe(
+      take(1),
+      switchMap(token => {
+        return this.httpClient.post<{ imageUrl: string; imagePath: string }>(
+          'https://us-central1-ionic-project1-dab73.cloudfunctions.net/storeImage',
+          uploadData,
+          { headers: { Authorization: 'Bearer ' + token } },
+        );
+      }),
     );
   }
 
   addPlace(place: Place) {
-    const newPlace = {
+    let newPlace = {
       ...place,
-      userId: this.authService.getUserId,
     };
 
     let firebaseId;
-    return this.httpClient
-      .post<{ name: string }>(this.getApiUrl(), newPlace)
-      .pipe(
-        switchMap(response => {
-          firebaseId = response.name;
-          return this.places;
-        }),
-        take(1),
-        tap(places => {
-          newPlace.id = firebaseId;
-          this.places.next(places.concat(newPlace));
-        }),
-      );
+    let fetchUserId: string;
+
+    return this.authService.getUserId.pipe(
+      take(1),
+      switchMap(userId => {
+        fetchUserId = userId;
+        return this.authService.getToken;
+      }),
+      take(1),
+      switchMap(token => {
+        if (!fetchUserId) {
+          throw new Error('No user found!');
+        }
+
+        newPlace.userId = fetchUserId;
+
+        return this.httpClient.post<{ name: string }>(
+          `${this.getApiUrl()}?auth=${token}`,
+          newPlace,
+        );
+      }),
+      switchMap(response => {
+        firebaseId = response.name;
+        return this.places;
+      }),
+      take(1),
+      tap(places => {
+        newPlace.id = firebaseId;
+        this.places.next(places.concat(newPlace));
+      }),
+    );
   }
 
   updatePlace(id, title, description) {
     let updatedPlaces: Place[];
-    return this.places.pipe(
+    let fetchedToken: string;
+
+    return this.authService.getToken.pipe(
+      take(1),
+      switchMap(token => {
+        fetchedToken = token;
+        return this.places;
+      }),
       take(1),
       switchMap(places => {
         if (!places || places.length <= 0) {
@@ -114,10 +154,13 @@ export class PlacesService {
           title,
           description,
         };
-        return this.httpClient.put(this.getApiUrl(`/${id}.json`), {
-          ...updatedPlaces[updatedPlaceIndex],
-          id: null,
-        });
+        return this.httpClient.put(
+          this.getApiUrl(`/${id}.json?auth=${fetchedToken}`),
+          {
+            ...updatedPlaces[updatedPlaceIndex],
+            id: null,
+          },
+        );
       }),
       tap(() => {
         this.places.next(updatedPlaces);
